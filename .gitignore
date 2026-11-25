@@ -1,0 +1,13 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+build/
+/app/build/
+/OneClip-*.apk
+/captures
+.externalNativeBuild
+.cxx
+*.jks
+*.keystore

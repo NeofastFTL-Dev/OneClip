@@ -1,0 +1,60 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build debug APK
+        run: ./gradlew --no-daemon --console=plain assembleDebug
+
+      - name: Collect APK
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/app-debug.apk "dist/OneClip-${GITHUB_REF_NAME#v}.apk"
+          ls -lh dist
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OneClip-apk
+          path: dist/*.apk
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: OneClip ${{ github.ref_name }}
+          files: dist/*.apk
+          generate_release_notes: true
+          body: |
+            OneClip ${{ github.ref_name }} — Android video/audio downloader.
+
+            Copy a link from YouTube, Instagram, Facebook, Twitch or X, tap the floating
+            bubble (or paste it in the app) and pick a quality or audio-only.
+
+            Install: download the APK, allow installing from this source, then grant
+            notifications and "Display over other apps" for the floating bubble.
+            Files are saved to `Download/OneClip`.
