@@ -517,7 +517,10 @@ private fun SettingsDialog(
             TextButton(onClick = onClose) { Text("Done", color = Mint) }
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("Floating bubble", color = TextMain, fontSize = 14.sp)

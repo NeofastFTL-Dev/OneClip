@@ -9,6 +9,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.IBinder
 import android.os.SystemClock
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.oneclip.app.MainActivity
 import com.oneclip.app.R
@@ -26,6 +27,7 @@ class DownloadService : Service() {
         const val ACTION_CANCEL = "com.oneclip.app.action.CANCEL_DOWNLOAD"
         const val EXTRA_ID = "id"
 
+        private const val TAG = "OneClip/Download"
         private const val CHANNEL_PROGRESS = "downloads"
         private const val CHANNEL_DONE = "download_done"
         private const val NOTIF_PROGRESS = 1001
@@ -95,6 +97,7 @@ class DownloadService : Service() {
             } catch (t: YoutubeDL.CanceledException) {
                 Downloads.markCanceled(item.id)
             } catch (t: Throwable) {
+                Log.e(TAG, "download failed: ${item.url} (${item.spec.label})", t)
                 Downloads.fail(item.id, Downloader.humanError(t))
             } finally {
                 dir.deleteRecursively()

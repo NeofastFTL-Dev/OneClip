@@ -34,6 +34,7 @@ object Engine {
             try {
                 YoutubeDL.getInstance().init(app)
                 FFmpeg.getInstance().init(app)
+                refreshExtractorsIfDue(app)
                 ready.complete(Unit)
             } catch (t: Throwable) {
                 Log.e(TAG, "engine init failed", t)
@@ -51,6 +52,22 @@ object Engine {
         }
     }
 
+    /**
+     * The yt-dlp binary baked into the APK ages quickly and sites stop working once it does,
+     * so a fresh install (and an install older than a week) refreshes it before the first probe.
+     */
+    private fun refreshExtractorsIfDue(context: Context) {
+        if (!Prefs.extractorRefreshDue()) return
+        try {
+            YoutubeDL.getInstance().updateYoutubeDL(context, YoutubeDL.UpdateChannel.STABLE)
+            Prefs.lastExtractorUpdate = System.currentTimeMillis()
+            Log.i(TAG, "extractors refreshed: ${YoutubeDL.version(context)}")
+        } catch (t: Throwable) {
+            // Offline or rate limited: keep the bundled extractor and retry on a later launch.
+            Log.w(TAG, "extractor refresh failed", t)
+        }
+    }
+
     fun isReady(): Boolean = ready.isCompleted && failure == null
 
     fun version(context: Context): String? = try {
@@ -62,6 +79,7 @@ object Engine {
     suspend fun updateExtractors(context: Context): String = withContext(Dispatchers.IO) {
         await()
         val status = YoutubeDL.getInstance().updateYoutubeDL(context, YoutubeDL.UpdateChannel.STABLE)
+        Prefs.lastExtractorUpdate = System.currentTimeMillis()
         if (status == YoutubeDL.UpdateStatus.ALREADY_UP_TO_DATE) {
             "Extractors are already up to date."
         } else {

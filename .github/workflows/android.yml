@@ -26,14 +26,34 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build debug APK
-        run: ./gradlew --no-daemon --console=plain assembleDebug
+      - name: Configure release signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::Signing keystore secret is missing; releases must be signed with the stable key."
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$GITHUB_WORKSPACE/oneclip-release.jks"
+          {
+            echo "storeFile=$GITHUB_WORKSPACE/oneclip-release.jks"
+            echo "storePassword=$STORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > "$GITHUB_WORKSPACE/signing.properties"
+
+      - name: Build release APK
+        run: ./gradlew --no-daemon --console=plain assembleRelease
 
       - name: Collect APK
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk "dist/OneClip-${GITHUB_REF_NAME#v}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "dist/OneClip-${GITHUB_REF_NAME#v}.apk"
           ls -lh dist
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "dist/OneClip-${GITHUB_REF_NAME#v}.apk" | head -3
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -55,6 +75,9 @@ jobs:
             Copy a link from YouTube, Instagram, Facebook, Twitch or X, tap the floating
             bubble (or paste it in the app) and pick a quality or audio-only.
 
-            Install: download the APK, allow installing from this source, then grant
+            **First launch refreshes its yt-dlp extractors automatically** (a few seconds on
+            Wi-Fi). Use Settings → Update extractors any time a site stops working.
+
+            Install: download the APK below, allow installing from this source, then grant
             notifications and "Display over other apps" for the floating bubble.
             Files are saved to `Download/OneClip`.
